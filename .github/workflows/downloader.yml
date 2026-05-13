@@ -1,4 +1,4 @@
-name: YouTube Downloader Pro (Auto-Login)
+name: YouTube Downloader Pro (Auto-Cookies)
 
 on:
   workflow_dispatch:
@@ -25,26 +25,26 @@ on:
         type: boolean
         default: false
 
-permissions:
-  contents: write
-
 jobs:
   download:
     runs-on: ubuntu-latest
+    container: mcr.microsoft.com/playwright/python:v1.41.0-focal   # شامل Python + Playwright + Firefox
     steps:
-      - name: 📥 دریافت کد ریپازیتوری (برای commit)
-        if: inputs.save_repo
+      - name: 📥 دریافت کد ریپازیتوری (برای commit و اسکریپت لاگین)
         uses: actions/checkout@v4
 
-      - name: 🔧 نصب پیش‌نیازها
+      - name: 🔧 نصب ابزارهای اضافی
         run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg
-          curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-          sudo apt-get install -y nodejs
-          pip install -U yt-dlp yt-dlp-ejs
+          apt-get update && apt-get install -y ffmpeg
+          pip install yt-dlp yt-dlp-ejs
 
-      - name: ⚙️ تنظیم فرمت بر اساس کیفیت انتخابی
+      - name: 🍪 استخراج خودکار کوکی با Playwright
+        env:
+          YT_USERNAME: ${{ secrets.YOUTUBE_USERNAME }}
+          YT_PASSWORD: ${{ secrets.YOUTUBE_PASSWORD }}
+        run: python get_cookies.py
+
+      - name: ⚙️ تنظیم فرمت بر اساس کیفیت
         id: set_format
         run: |
           QUAL="${{ inputs.quality }}"
@@ -54,19 +54,15 @@ jobs:
             FORMAT="$QUAL"
           fi
           echo "FORMAT=$FORMAT" >> $GITHUB_ENV
-          echo "فرمت انتخاب‌شده: $FORMAT"
 
-      - name: 🎬 دانلود ویدیو با احراز هویت خودکار
+      - name: 🎬 دانلود ویدیو
         run: |
-          yt-dlp -u "${{ secrets.YOUTUBE_USERNAME }}" \
-                 -p "${{ secrets.YOUTUBE_PASSWORD }}" \
+          yt-dlp --cookies cookies.txt \
                  --js-runtimes node \
                  -f "$FORMAT" \
                  -o "%(title)s.%(ext)s" \
                  --merge-output-format mp4 \
                  "${{ inputs.url }}"
-          echo "فایل(های) نهایی:"
-          ls -lh *.mp4
 
       - name: 📦 آپلود به Artifact
         if: inputs.save_artifact
@@ -74,9 +70,8 @@ jobs:
         with:
           name: دانلود-شده
           path: "*.mp4"
-          if-no-files-found: error
 
-      - name: 📁 کپی به پوشه downloads و commit
+      - name: 📁 Commit به پوشه downloads
         if: inputs.save_repo
         run: |
           mkdir -p downloads
@@ -84,14 +79,13 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add downloads/*.mp4
-          git commit -m "Add downloaded video: $(ls -1 *.mp4 | head -1)" || echo "No changes to commit"
+          git commit -m "Add video: $(ls *.mp4)" || echo "No changes"
           git push
 
-      - name: 🚀 انتشار به‌عنوان Release
+      - name: 🚀 انتشار Release
         if: inputs.save_release
         uses: ncipollo/release-action@v1
         with:
           artifacts: "*.mp4"
-          tag: "download-${{ github.run_id }}-${{ github.run_attempt }}"
-          name: "YouTube Download (${{ github.run_id }})"
+          tag: "vid-${{ github.run_id }}"
           token: ${{ secrets.GITHUB_TOKEN }}
