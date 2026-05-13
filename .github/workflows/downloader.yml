@@ -42,11 +42,11 @@ jobs:
           sudo apt-get install -y ffmpeg
           curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
           sudo apt-get install -y nodejs
-          pip install -U yt-dlp yt-dlp-ejs
+          pip install -U yt-dlp yt-dlp-ejs ytc
 
-      - name: 🍪 ساخت فایل کوکی از Secret
-        run: echo "${{ secrets.YOUTUBE_COOKIES }}" | base64 -d > cookies.txt
-
+      - name: 🍪 دریافت خودکار کوکی با ytc
+        run: |
+          python -c "import ytc; print(ytc.youtube())" > cookies.txt
       - name: ⚙️ تنظیم فرمت بر اساس کیفیت انتخابی
         id: set_format
         run: |
@@ -74,7 +74,7 @@ jobs:
         if: inputs.save_artifact
         uses: actions/upload-artifact@v4
         with:
-          name: دانلود-شده
+          name: downloaded-file
           path: "*.mp4"
           if-no-files-found: error
 
