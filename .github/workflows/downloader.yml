@@ -1,0 +1,104 @@
+name: YouTube Downloader Pro
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: '🎬 لینک ویدیو یوتیوب'
+        required: true
+        type: string
+      quality:
+        description: '📺 کیفیت (480, 720, 1080, best, worst و...)'
+        required: true
+        type: string
+        default: '480'
+      save_artifact:
+        description: '📦 ذخیره در Artifact'
+        type: boolean
+        default: true
+      save_repo:
+        description: '📁 ذخیره در پوشه downloads/ ریپازیتوری (commit)'
+        type: boolean
+        default: false
+      save_release:
+        description: '🚀 انتشار به‌عنوان Release'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  download:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 دریافت کد ریپازیتوری (برای commit)
+        if: inputs.save_repo
+        uses: actions/checkout@v4
+
+      - name: 🔧 نصب پیش‌نیازها
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+          sudo apt-get install -y nodejs
+          pip install -U yt-dlp yt-dlp-ejs
+
+      - name: 🍪 ساخت فایل کوکی
+        run: echo "${{ secrets.YOUTUBE_COOKIES }}" | base64 -d > cookies.txt
+
+      - name: ⚙️ تنظیم فرمت بر اساس کیفیت انتخابی
+        id: set_format
+        run: |
+          QUAL="${{ inputs.quality }}"
+          if [[ "$QUAL" =~ ^[0-9]+$ ]]; then
+            # عددی: محدودیت ارتفاع
+            FORMAT="bestvideo[height<=${QUAL}]+bestaudio/best[height<=${QUAL}]"
+          else
+            # غیرعددی: رشته را مستقیماً استفاده کن (best, worst, ...)
+            FORMAT="$QUAL"
+          fi
+          echo "FORMAT=$FORMAT" >> $GITHUB_ENV
+          echo "فرمت انتخاب‌شده: $FORMAT"
+
+      - name: 🎬 دانلود ویدیو (نام = عنوان اصلی)
+        run: |
+          yt-dlp --cookies cookies.txt \
+                 -f "$FORMAT" \
+                 -o "%(title)s.%(ext)s" \
+                 --merge-output-format mp4 \
+                 "${{ inputs.url }}"
+          # نمایش نام فایل تولیدشده
+          echo "فایل نهایی:"
+          ls -lh *.mp4
+
+      # --- مسیر Artifact ---
+      - name: 📦 آپلود به Artifact
+        if: inputs.save_artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: دانلود-شده
+          path: "*.mp4"
+          if-no-files-found: error
+
+      # --- مسیر Commit در ریپو ---
+      - name: 📁 کپی به پوشه downloads و commit
+        if: inputs.save_repo
+        run: |
+          mkdir -p downloads
+          cp *.mp4 downloads/
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add downloads/*.mp4
+          git commit -m "Add downloaded video: $(ls -1 *.mp4 | head -1)" || echo "No changes to commit"
+          git push
+
+      # --- مسیر Release ---
+      - name: 🚀 انتشار به‌عنوان Release
+        if: inputs.save_release
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "*.mp4"
+          tag: "download-${{ github.run_id }}-${{ github.run_attempt }}"
+          name: "YouTube Download (${{ github.run_id }})"
+          token: ${{ secrets.GITHUB_TOKEN }}
