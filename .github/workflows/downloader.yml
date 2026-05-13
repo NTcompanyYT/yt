@@ -1,4 +1,4 @@
-name: YouTube Downloader Pro
+name: YouTube Downloader Pro (Auto-Login)
 
 on:
   workflow_dispatch:
@@ -17,7 +17,7 @@ on:
         type: boolean
         default: true
       save_repo:
-        description: '📁 ذخیره در پوشه downloads/ ریپازیتوری (commit)'
+        description: '📁 ذخیره در پوشه downloads/ ریپازیتوری'
         type: boolean
         default: false
       save_release:
@@ -36,17 +36,14 @@ jobs:
         if: inputs.save_repo
         uses: actions/checkout@v4
 
-      - name: 🔧 نصب پیش‌نیازها (ffmpeg, Node.js, yt-dlp)
+      - name: 🔧 نصب پیش‌نیازها
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
           curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
           sudo apt-get install -y nodejs
-          pip install -U yt-dlp yt-dlp-ejs ytc
+          pip install -U yt-dlp yt-dlp-ejs
 
-      - name: 🍪 دریافت خودکار کوکی با ytc
-        run: |
-          python -c "import ytc; print(ytc.youtube())" > cookies.txt
       - name: ⚙️ تنظیم فرمت بر اساس کیفیت انتخابی
         id: set_format
         run: |
@@ -59,9 +56,10 @@ jobs:
           echo "FORMAT=$FORMAT" >> $GITHUB_ENV
           echo "فرمت انتخاب‌شده: $FORMAT"
 
-      - name: 🎬 دانلود ویدیو (نام = عنوان اصلی، با Node.js)
+      - name: 🎬 دانلود ویدیو با احراز هویت خودکار
         run: |
-          yt-dlp --cookies cookies.txt \
+          yt-dlp -u "${{ secrets.YOUTUBE_USERNAME }}" \
+                 -p "${{ secrets.YOUTUBE_PASSWORD }}" \
                  --js-runtimes node \
                  -f "$FORMAT" \
                  -o "%(title)s.%(ext)s" \
@@ -74,7 +72,7 @@ jobs:
         if: inputs.save_artifact
         uses: actions/upload-artifact@v4
         with:
-          name: downloaded-file
+          name: دانلود-شده
           path: "*.mp4"
           if-no-files-found: error
 
