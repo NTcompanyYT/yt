@@ -1,14 +1,14 @@
-name: YouTube Downloader Pro (Auto-Cookies v2)
+name: YouTube Downloader Final
 
 on:
   workflow_dispatch:
     inputs:
       url:
-        description: '🎬 لینک ویدیو یوتیوب'
+        description: '🎬 لینک ویدیو'
         required: true
         type: string
       quality:
-        description: '📺 کیفیت (480, 720, 1080, best, worst و...)'
+        description: '📺 کیفیت (480, 720, 1080, best...)'
         required: true
         type: string
         default: '480'
@@ -17,36 +17,34 @@ on:
         type: boolean
         default: true
       save_repo:
-        description: '📁 ذخیره در پوشه downloads/ ریپازیتوری'
+        description: '📁 ذخیره در پوشه downloads/ ریپو'
         type: boolean
         default: false
       save_release:
-        description: '🚀 انتشار به‌عنوان Release'
+        description: '🚀 انتشار Release'
         type: boolean
         default: false
 
 jobs:
   download:
-    runs-on: ubuntu-latest   # 22.04, python 3.10+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - name: 📥 دریافت کد ریپازیتوری
+      - name: 📥 دریافت کد (برای commit)
+        if: inputs.save_repo
         uses: actions/checkout@v4
 
-      - name: 🔧 نصب پیش‌نیازهای سیستم و پایتون
+      - name: 🔧 نصب yt-dlp و ffmpeg
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg firefox
-          pip install --upgrade pip
-          pip install yt-dlp playwright
-          python -m playwright install firefox --with-deps
+          sudo apt-get install -y ffmpeg
+          pip install yt-dlp
 
-      - name: 🍪 استخراج خودکار کوکی با Playwright
-        env:
-          YT_USERNAME: ${{ secrets.YOUTUBE_USERNAME }}
-          YT_PASSWORD: ${{ secrets.YOUTUBE_PASSWORD }}
-        run: python get_cookies.py
+      - name: 🍪 تولید cookies.txt از Secret
+        run: echo "${{ secrets.YOUTUBE_COOKIES }}" | base64 -d > cookies.txt
 
-      - name: ⚙️ تنظیم فرمت بر اساس کیفیت
+      - name: ⚙️ تنظیم فرمت
         id: set_format
         run: |
           QUAL="${{ inputs.quality }}"
@@ -60,13 +58,12 @@ jobs:
       - name: 🎬 دانلود ویدیو
         run: |
           yt-dlp --cookies cookies.txt \
-                 --js-runtimes node \
                  -f "$FORMAT" \
                  -o "%(title)s.%(ext)s" \
                  --merge-output-format mp4 \
                  "${{ inputs.url }}"
 
-      - name: 📦 آپلود به Artifact
+      - name: 📦 آپلود Artifact
         if: inputs.save_artifact
         uses: actions/upload-artifact@v4
         with:
