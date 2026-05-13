@@ -36,7 +36,7 @@ jobs:
         if: inputs.save_repo
         uses: actions/checkout@v4
 
-      - name: 🔧 نصب پیش‌نیازها
+      - name: 🔧 نصب پیش‌نیازها (ffmpeg, Node.js, yt-dlp)
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
@@ -44,7 +44,7 @@ jobs:
           sudo apt-get install -y nodejs
           pip install -U yt-dlp yt-dlp-ejs
 
-      - name: 🍪 ساخت فایل کوکی
+      - name: 🍪 ساخت فایل کوکی از Secret
         run: echo "${{ secrets.YOUTUBE_COOKIES }}" | base64 -d > cookies.txt
 
       - name: ⚙️ تنظیم فرمت بر اساس کیفیت انتخابی
@@ -52,27 +52,24 @@ jobs:
         run: |
           QUAL="${{ inputs.quality }}"
           if [[ "$QUAL" =~ ^[0-9]+$ ]]; then
-            # عددی: محدودیت ارتفاع
             FORMAT="bestvideo[height<=${QUAL}]+bestaudio/best[height<=${QUAL}]"
           else
-            # غیرعددی: رشته را مستقیماً استفاده کن (best, worst, ...)
             FORMAT="$QUAL"
           fi
           echo "FORMAT=$FORMAT" >> $GITHUB_ENV
           echo "فرمت انتخاب‌شده: $FORMAT"
 
-      - name: 🎬 دانلود ویدیو (نام = عنوان اصلی)
+      - name: 🎬 دانلود ویدیو (نام = عنوان اصلی، با Node.js)
         run: |
           yt-dlp --cookies cookies.txt \
+                 --js-runtimes node \
                  -f "$FORMAT" \
                  -o "%(title)s.%(ext)s" \
                  --merge-output-format mp4 \
                  "${{ inputs.url }}"
-          # نمایش نام فایل تولیدشده
-          echo "فایل نهایی:"
+          echo "فایل(های) نهایی:"
           ls -lh *.mp4
 
-      # --- مسیر Artifact ---
       - name: 📦 آپلود به Artifact
         if: inputs.save_artifact
         uses: actions/upload-artifact@v4
@@ -81,7 +78,6 @@ jobs:
           path: "*.mp4"
           if-no-files-found: error
 
-      # --- مسیر Commit در ریپو ---
       - name: 📁 کپی به پوشه downloads و commit
         if: inputs.save_repo
         run: |
@@ -93,7 +89,6 @@ jobs:
           git commit -m "Add downloaded video: $(ls -1 *.mp4 | head -1)" || echo "No changes to commit"
           git push
 
-      # --- مسیر Release ---
       - name: 🚀 انتشار به‌عنوان Release
         if: inputs.save_release
         uses: ncipollo/release-action@v1
