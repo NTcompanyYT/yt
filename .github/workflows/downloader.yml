@@ -41,8 +41,17 @@ jobs:
           sudo apt-get install -y ffmpeg
           pip install yt-dlp
 
-      - name: 🍪 تولید cookies.txt از Secret
-        run: echo "${{ secrets.YOUTUBE_COOKIES }}" | base64 -d > cookies.txt
+      - name: 🍪 تولید cookies.txt از Secret (با Python، امن و دقیق)
+        env:
+          COOKIE_B64: ${{ secrets.YOUTUBE_COOKIES }}
+        run: |
+          python3 -c "
+          import base64, os
+          b64 = os.environ['COOKIE_B64']
+          with open('cookies.txt', 'w') as f:
+              f.write(base64.b64decode(b64).decode())
+          "
+          echo "✅ cookies.txt ایجاد شد."
 
       - name: ⚙️ تنظیم فرمت
         id: set_format
