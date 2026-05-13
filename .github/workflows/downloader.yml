@@ -1,4 +1,4 @@
-name: YouTube Downloader Pro (Auto-Cookies)
+name: YouTube Downloader Pro (Auto-Cookies v2)
 
 on:
   workflow_dispatch:
@@ -27,18 +27,18 @@ on:
 
 jobs:
   download:
-    runs-on: ubuntu-latest
-    container: mcr.microsoft.com/playwright/python:v1.41.0-jammy   # ← 22.04, python 3.10+
+    runs-on: ubuntu-latest   # 22.04, python 3.10+
     steps:
       - name: 📥 دریافت کد ریپازیتوری
         uses: actions/checkout@v4
 
-      - name: 🔧 نصب پیش‌نیازها (فقط ffmpeg و yt-dlp)
+      - name: 🔧 نصب پیش‌نیازهای سیستم و پایتون
         run: |
-          apt-get update && apt-get install -y ffmpeg
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg firefox
           pip install --upgrade pip
-          pip install yt-dlp
-          # دیگر نیازی به yt-dlp-ejs نیست
+          pip install yt-dlp playwright
+          python -m playwright install firefox --with-deps
 
       - name: 🍪 استخراج خودکار کوکی با Playwright
         env:
