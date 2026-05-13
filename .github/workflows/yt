@@ -1,0 +1,30 @@
+name: YouTube Downloader
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'لینک ویدیو یوتیوب'
+        required: true
+        type: string
+
+jobs:
+  download:
+    runs-on: ubuntu-latest
+    steps:
+      - name: نصب yt-dlp و ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          pip install yt-dlp
+
+      - name: دانلود ویدیو (MP4)
+        run: |
+          yt-dlp --merge-output-format mp4 "${{ github.event.inputs.url }}"
+
+      - name: آپلود ویدیو به عنوان Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: دانلود-شده
+          path: "*.mp4"
+          if-no-files-found: error
