@@ -1,4 +1,4 @@
-name: YouTube Downloader Final
+name: YouTube Downloader Debug
 
 on:
   workflow_dispatch:
@@ -8,40 +8,22 @@ on:
         required: true
         type: string
       quality:
-        description: '📺 کیفیت (480, 720, 1080, best...)'
+        description: '📺 کیفیت'
         required: true
         type: string
         default: '480'
-      save_artifact:
-        description: '📦 ذخیره در Artifact'
-        type: boolean
-        default: true
-      save_repo:
-        description: '📁 ذخیره در پوشه downloads/ ریپو'
-        type: boolean
-        default: false
-      save_release:
-        description: '🚀 انتشار Release'
-        type: boolean
-        default: false
 
 jobs:
   download:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
-      - name: 📥 دریافت کد (برای commit)
-        if: inputs.save_repo
-        uses: actions/checkout@v4
-
       - name: 🔧 نصب yt-dlp و ffmpeg
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
           pip install yt-dlp
 
-      - name: 🍪 تولید cookies.txt از Secret (با Python، امن و دقیق)
+      - name: 🍪 تولید cookies.txt
         env:
           COOKIE_B64: ${{ secrets.YOUTUBE_COOKIES }}
         run: |
@@ -51,49 +33,15 @@ jobs:
           with open('cookies.txt', 'w') as f:
               f.write(base64.b64decode(b64).decode())
           "
-          echo "✅ cookies.txt ایجاد شد."
+          echo "--- cookies.txt (first 5 lines) ---"
+          head -n 5 cookies.txt
+          echo "--- end ---"
 
-      - name: ⚙️ تنظیم فرمت
-        id: set_format
-        run: |
-          QUAL="${{ inputs.quality }}"
-          if [[ "$QUAL" =~ ^[0-9]+$ ]]; then
-            FORMAT="bestvideo[height<=${QUAL}]+bestaudio/best[height<=${QUAL}]"
-          else
-            FORMAT="$QUAL"
-          fi
-          echo "FORMAT=$FORMAT" >> $GITHUB_ENV
-
-      - name: 🎬 دانلود ویدیو
+      - name: 🎬 دانلود ویدیو با لاگ کامل
         run: |
           yt-dlp --cookies cookies.txt \
-                 -f "$FORMAT" \
+                 -f "bestvideo[height<=${{ inputs.quality }}]+bestaudio/best[height<=${{ inputs.quality }}]" \
                  -o "%(title)s.%(ext)s" \
                  --merge-output-format mp4 \
+                 --verbose \
                  "${{ inputs.url }}"
-
-      - name: 📦 آپلود Artifact
-        if: inputs.save_artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: دانلود-شده
-          path: "*.mp4"
-
-      - name: 📁 Commit به پوشه downloads
-        if: inputs.save_repo
-        run: |
-          mkdir -p downloads
-          cp *.mp4 downloads/
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add downloads/*.mp4
-          git commit -m "Add video: $(ls *.mp4)" || echo "No changes"
-          git push
-
-      - name: 🚀 انتشار Release
-        if: inputs.save_release
-        uses: ncipollo/release-action@v1
-        with:
-          artifacts: "*.mp4"
-          tag: "vid-${{ github.run_id }}"
-          token: ${{ secrets.GITHUB_TOKEN }}
