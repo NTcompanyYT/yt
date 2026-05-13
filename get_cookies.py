@@ -16,18 +16,18 @@ def main():
         page.fill('input[type="email"]', username)
         page.click('#identifierNext')
 
-        page.wait_for_selector('input[type="password"]', timeout=10000)
-        page.fill('input[type="password"]', password)
+        # منتظر فیلد رمز قابل مشاهده (نه hidden)
+        page.wait_for_selector('input[type="password"]:visible', timeout=20000)
+        page.fill('input[type="password"]:visible', password)
         page.click('#passwordNext')
 
-        # منتظر بمانیم تا ورود کامل شود (مثلاً با ظاهر شدن یک عنصر خاص)
+        # منتظر نشانه‌ای از ورود موفق
         try:
-            page.wait_for_selector('ytd-app', timeout=15000)  # نشانه ورود موفق
+            page.wait_for_selector('ytd-app', timeout=20000)  # المان اصلی یوتیوب
         except:
-            # ممکن است چالش تایید دو مرحله‌ای ظاهر شود - اگر تنظیمات App Password درست باشد نباید بیاید
             pass
 
-        # استخراج همه کوکی‌ها در فرمت Netscape
+        # استخراج کوکی‌ها
         cookies = context.cookies()
         with open("cookies.txt", "w") as f:
             f.write("# Netscape HTTP Cookie File\n")
