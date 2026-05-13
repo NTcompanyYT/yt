@@ -28,15 +28,17 @@ on:
 jobs:
   download:
     runs-on: ubuntu-latest
-    container: mcr.microsoft.com/playwright/python:v1.41.0-focal   # شامل Python + Playwright + Firefox
+    container: mcr.microsoft.com/playwright/python:v1.41.0-jammy   # ← 22.04, python 3.10+
     steps:
-      - name: 📥 دریافت کد ریپازیتوری (برای commit و اسکریپت لاگین)
+      - name: 📥 دریافت کد ریپازیتوری
         uses: actions/checkout@v4
 
-      - name: 🔧 نصب ابزارهای اضافی
+      - name: 🔧 نصب پیش‌نیازها (فقط ffmpeg و yt-dlp)
         run: |
           apt-get update && apt-get install -y ffmpeg
-          pip install yt-dlp yt-dlp-ejs
+          pip install --upgrade pip
+          pip install yt-dlp
+          # دیگر نیازی به yt-dlp-ejs نیست
 
       - name: 🍪 استخراج خودکار کوکی با Playwright
         env:
