@@ -78,7 +78,7 @@ jobs:
           if is_audio:
               QUAL = QUAL if QUAL in ('64kbps','128kbps','192kbps','320kbps') else '192kbps'
           else:
-              QUAL = QUAL if QUAL in ('720p','1080p') else '720p'
+              QUAL = QUAL if QUAL in ('360p','720p','1080p') else '720p'
 
           payload = {
               "url": URL,
